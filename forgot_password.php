@@ -1,4 +1,9 @@
 <?php
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
+
+require 'vendor/autoload.php';
 include "config.php";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -11,41 +16,78 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $code .= $number;
         }
 
-        $query1 = "SELECT `id`, `email`, `password`, `code`, `phonenumber`, `address`, `registration` FROM `student` WHERE email = '{$email}'";
+        $query1 = "SELECT id, email, password, code, phonenumber, address, registration FROM student WHERE email = '{$email}'";
         $result = mysqli_query($conn, $query1);
+
+        $sender = filter_var("omondiakinyi5@gmail.com", FILTER_SANITIZE_EMAIL);
+        $pass = 'zbayjrbbncywsdbx';
+        $to = $email;
+        echo "<p> password: $pass</p>";
+
+        $mail = new PHPMailer(true);
+        $mail->addAddress($to);
 
         if (mysqli_num_rows($result) > 0) {
             $resultarr = mysqli_fetch_array($result);
             $id = $resultarr["id"];
 
-            $query2 = "UPDATE `student` SET `code`='$code' WHERE id = '$id'";
+            $query2 = "UPDATE student SET code='$code' WHERE id = '$id'";
             mysqli_query($conn, $query2);
 
-            // Send email using Gmail's SMTP server
-            $to = $email;
             $subject = "Password retrieval code";
             $message = "Your retrieval code is " . $code;
-            $headers = "From: opiyogilphine@gmail.com\r\n";
-            if (mail($to, $subject, $message, $headers)) {
-                echo "done";
-            } else {
-                exit("Error sending email");
+            $headers = "From: $subject\r\n";
+
+
+            try {
+                $mail->SMTPDebug = SMTP::DEBUG_SERVER;
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Password = $pass;
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = 587;
+
+                $mail->setFrom($sender);
+
+                $query3 = "INSERT INTO student (email, code) VALUES ('$email', '$code')";
+                $mail->isHTML(true);
+                $mail->Subject = $subject;
+                $mail->Body = $message;
+
+                $mail->send();
+                echo 'Message has been sent';
+            } catch (Exception $e) {
+                echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
             }
         } else {
-            $query3 = "INSERT INTO `student` (`email`, `code`) VALUES ('$email', '$code')";
             mysqli_query($conn, $query3);
 
             // Send email using Gmail's SMTP server
-            $to = $email;
             $subject = "Password retrieval code";
             $message = "Your retrieval code is " . $code;
 
-            $headers = "From: opiyogilphine@gmail.com"; // Replace with your Gmail address
+            $headers = "From: $sender"; // Replace with your Gmail address
 
-            if (mail($to, $subject, $message, $headers)) {
-                echo "done";
-            } else {
-                exit("Error sending email");
+            try {
+                $mail->SMTPDebug = SMTP::DEBUG_SERVER;
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Password = $pass;
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = 587;
+
+                $mail->setFrom($sender);
+
+                $mail->isHTML(true);
+                $mail->Subject = $subject;
+                $mail->Body = $message;
+
+                $mail->send();
+                echo 'Message has been sent';
+            } catch (Exception $e) {
+                echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
             }
         }
     }
